@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Kết Nối BA</title>
+</head>
+<body>
+    <h3>Kiểm tra kết nối Backend & Database</h3>
+    <button onclick="testApi()">Bấm để gọi API</button>
+    <pre id="result">Chưa gọi...</pre>
+
+    <script>
+        async function testApi() {
+        try {
+            let response = await fetch('http://localhost:5035/api/Products'); // Đổi thành route GET thực tế của bạn
+        
+            // Lấy dữ liệu dưới dạng text trước để kiểm tra
+            let textData = await response.text();
+            console.log("Response thô từ Server:", textData);
+
+        // Kiểm tra nếu có dữ liệu mới parse sang JSON
+            if (textData) {
+                let jsonData = JSON.parse(textData);
+                document.getElementById('result').innerText = JSON.stringify(jsonData, null, 2);
+            } 
+            else {
+                document.getElementById('result').innerText = "API trả về thành công nhưng body rỗng (No Content).";
+            }
+            } catch (error) {
+                document.getElementById('result').innerText = "Lỗi: " + error.message;
+                console.error("Lỗi:", error);
+            }
+        }
+    </script>
+</body>
+</html>

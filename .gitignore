@@ -1,0 +1,13 @@
+cat << 'EOF' > .gitignore
+# macOS junk
+.DS_Store
+
+# Editor history
+.history/
+
+# .NET build files
+bin/
+obj/
+*.user
+*.suo
+EOF

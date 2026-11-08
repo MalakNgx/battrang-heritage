@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo mã QR — Gốm Bát Tràng</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Trang demo cần cuộn được (style.css khóa cuộn cho app) */
+    html, body { overflow: auto; height: auto; }
+    .demo { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+    .demo h1 { color: var(--accent); font-size: 24px; margin-bottom: 6px; }
+    .demo > p { color: var(--text2); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+    .card img { width: 200px; height: 200px; background: #fff; padding: 8px; border-radius: 8px; }
+    .card h3 { font-size: 15px; margin: 12px 0 4px; }
+    .card code { display: block; font-size: 11px; color: var(--text3); word-break: break-all; margin-bottom: 12px; }
+    .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-bottom: 8px; }
+    .tag.ok { color: var(--green); background: rgba(91,168,140,0.12); }
+    .tag.bad { color: var(--red); background: rgba(232,115,74,0.12); }
+    .card a { color: var(--accent); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="demo">
+    <h1>🏺 Demo mã QR</h1>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <script>
+    // Ảnh QR tạo bằng api.qrserver.com (cùng dịch vụ đang dùng trong cột QrCodeUrl của DB)
+    const QR_API = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=';
+    const samples = [
+      { id: 'SP001', name: 'Bình hoa men rạn Hoa Sen', data: 'http://localhost:5035/api/chat/SP001', valid: true, note: 'Định dạng URL trong DB' },
+      { id: 'SP002', name: 'Tượng Rồng men ngọc',      data: 'http://localhost:5035/api/chat/SP002', valid: true, note: 'Định dạng URL trong DB' },
+      { id: 'SP001', name: 'Bình hoa (link PWA)',       data: location.href.replace(/demo\.html.*$/, '') + '?p=SP001', valid: true, note: 'Định dạng link PWA (đề xuất)' },
+      { id: null,    name: 'Mã không hợp lệ',           data: 'https://example.com/hello', valid: false, note: 'Để thử thông báo lỗi' },
+    ];
+
+    document.getElementById('grid').innerHTML = samples.map(s => `
+      <div class="card">
+        <span class="tag ${s.valid ? 'ok' : 'bad'}">${s.valid ? '✔ Khớp ' + s.id : '✖ Không khớp'}</span><br>
+        <img src="${QR_API + encodeURIComponent(s.data)}" alt="QR ${s.name}">
+        <h3>${s.name}</h3>
+        <code>${s.note}<br>${s.data}</code>
+        ${s.valid ? `<a href="index.html?p=${s.id}">▶ Mở trực tiếp (giả lập đã quét)</a>` : ''}
+      </div>
+    `).join('');
+  </script>
+</body>
+</html>
+

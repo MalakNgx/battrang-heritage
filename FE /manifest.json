@@ -1,0 +1,19 @@
+{
+  "name": "Gốm Bát Tràng — Di Sản Số",
+  "short_name": "GốmBT",
+  "description": "Khám phá di sản gốm Bát Tràng qua AI đa ngôn ngữ và 3D tương tác",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#f5f5f5",
+  "background_color": "#f5f5f5",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
+

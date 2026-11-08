@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f5f5f5">
+  <meta name="description" content="Khám phá di sản gốm Bát Tràng qua AI đa ngôn ngữ và 3D tương tác">
+  <title>Gốm Bát Tràng — Di Sản Số</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/icon.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== SCREEN 1: WELCOME ===== -->
+  <section id="screen-welcome" class="screen active">
+    <div class="welcome-content">
+      <div class="welcome-logo">🏺</div>
+      <h1>Gốm Bát Tràng</h1>
+      <p class="welcome-sub">Di sản gốm sứ Việt Nam · Vietnamese Pottery Heritage</p>
+
+      <button id="btn-scan" class="btn-primary">
+        <span class="btn-icon">📷</span>
+        Quét mã QR · Scan QR
+      </button>
+
+      <div class="divider"><span>hoặc · or</span></div>
+
+      <div class="manual-input">
+        <input type="text" id="input-product-id" placeholder="Nhập mã SP · Enter product code (e.g. SP001)">
+        <button id="btn-manual" class="btn-secondary">→</button>
+      </div>
+
+      <!-- Language selector -->
+      <div class="lang-selector" id="lang-selector">
+        <button class="lang-btn active" data-lang="vi">🇻🇳 VI</button>
+        <button class="lang-btn" data-lang="en">🇬🇧 EN</button>
+        <button class="lang-btn" data-lang="ja">🇯🇵 JA</button>
+        <button class="lang-btn" data-lang="ko">🇰🇷 KO</button>
+        <button class="lang-btn" data-lang="zh">🇨🇳 ZH</button>
+        <button class="lang-btn" data-lang="fr">🇫🇷 FR</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SCREEN 2: QR SCANNER ===== -->
+  <section id="screen-scanner" class="screen">
+    <div class="scanner-header">
+      <button class="back-btn" onclick="App.showScreen('welcome')">← Quay lại</button>
+      <span>Quét mã QR trên sản phẩm</span>
+    </div>
+    <div id="qr-reader"></div>
+    <div id="scanner-error" class="scanner-error hidden"></div>
+    <p class="scanner-hint">Hướng camera vào mã QR trên sản phẩm gốm</p>
+    <!-- Dự phòng khi camera bị chặn: chụp / chọn ảnh mã QR -->
+    <label class="scanner-file-btn">
+      🖼️ Chụp / chọn ảnh mã QR
+      <input type="file" id="qr-file" accept="image/*" capture="environment" hidden>
+    </label>
+    <div id="qr-file-reader" hidden></div>
+  </section>
+
+  <!-- ===== SCREEN 3: PRODUCT ===== -->
+  <section id="screen-product" class="screen">
+    <!-- Product Header -->
+    <div class="product-header">
+      <button class="back-btn" onclick="App.goHome()">← Trang chủ</button>
+      <span id="product-header-name">Sản phẩm</span>
+      <button class="lang-current" id="btn-change-lang">🇻🇳</button>
+    </div>
+
+    <!-- Product Card -->
+    <div class="product-card" id="product-card">
+      <div class="product-img-wrap"></div>
+      <div class="product-info">
+        <h2 id="product-name"></h2>
+        <span class="product-category" id="product-category"></span>
+        <span class="product-id" id="product-id-display"></span>
+      </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="chat" onclick="App.switchTab('chat')">
+        💬 Chat
+      </button>
+      <button class="tab-btn" data-tab="viewer3d" onclick="App.switchTab('viewer3d')">
+        🏺 3D
+      </button>
+      <button class="tab-btn" data-tab="info" onclick="App.switchTab('info')">
+        📖 Thông tin
+      </button>
+    </div>
+
+    <!-- Tab: Chat -->
+    <div class="tab-content active" id="tab-chat">
+      <div class="chat-messages" id="chat-messages">
+        <!-- Messages injected by JS -->
+      </div>
+
+      <!-- Quick action buttons -->
+      <div class="chat-actions" id="chat-actions">
+        <button class="action-chip" data-layer="identity">🔍 Nhận diện</button>
+        <button class="action-chip" data-layer="symbolism">🌸 Ý nghĩa hoa văn</button>
+        <button class="action-chip" data-layer="craftsmanship">🔨 Kỹ thuật chế tác</button>
+        <button class="action-chip" data-layer="artisan">👨‍🎨 Câu chuyện nghệ nhân</button>
+        <button class="action-chip" data-layer="cultural">🌏 Kết nối văn hóa</button>
+      </div>
+
+      <!-- Chat input -->
+      <div class="chat-input-bar">
+        <input type="text" id="chat-input" placeholder="Hỏi về sản phẩm này...">
+        <button id="btn-send" class="btn-send">➤</button>
+      </div>
+    </div>
+
+    <!-- Tab: 3D Viewer -->
+    <div class="tab-content" id="tab-viewer3d">
+      <div id="viewer3d-container">
+        <div id="viewer3d-canvas"></div>
+        <div class="viewer3d-overlay-top">
+          <span class="viewer3d-temp" id="viewer3d-temp">🔥 1300°C</span>
+          <button class="viewer3d-reset" onclick="Viewer3D.resetCamera()">⟲ Reset</button>
+        </div>
+        <div class="viewer3d-overlay-bottom">
+          <span class="viewer3d-hint">Kéo để xoay · Chụm để zoom</span>
+        </div>
+      </div>
+      <div class="viewer3d-desc" id="viewer3d-desc"></div>
+    </div>
+
+    <!-- Tab: Info (5 Layers) -->
+    <div class="tab-content" id="tab-info">
+      <div class="info-layers" id="info-layers">
+        <!-- Injected by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-spinner"></div>
+    <p id="loading-text">Đang tải...</p>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/scanner.js"></script>
+  <script src="js/chat.js"></script>
+
+  <!-- 3D Viewer loaded as module -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="js/viewer3d.js"></script>
+</body>
+</html>
+
