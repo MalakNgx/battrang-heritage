@@ -39,7 +39,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+// Đảm bảo các dòng này nằm ngoài if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BatTrang Heritage API v1");
+    // Nếu muốn khi truy cập vào trang chủ / nó tự động vào thẳng Swagger luôn, hãy bật dòng dưới:
+    c.RoutePrefix = string.Empty; 
+});
 // Bật tính năng đọc file tĩnh (ảnh local trong wwwroot)
 app.UseStaticFiles();
 
