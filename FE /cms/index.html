@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS — Gốm Bát Tràng</title>
+  <link rel="icon" href="../assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/cms.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">🏺 <b>CMS Gốm Bát Tràng</b></div>
+    <a class="btn ghost" href="../index.html" target="_blank">📱 App du khách</a>
+  </header>
+
+  <div class="app-layout">
+
+    <!-- Left navigation -->
+    <nav class="nav-sidebar">
+      <ul>
+        <li class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">📊</span> Dashboard
+        </li>
+        <li class="nav-item" data-page="products">
+          <span class="nav-icon">📦</span> Quản lý sản phẩm
+        </li>
+        <li class="nav-item" data-page="chat-logs">
+          <span class="nav-icon">💬</span> Lịch sử chat AI
+        </li>
+      </ul>
+    </nav>
+
+    <main class="page-area">
+
+      <!-- ===== DASHBOARD ===== -->
+      <div class="page" id="page-dashboard">
+        <div class="dash-header">
+          <h1 class="page-title">Dashboard</h1>
+          <div class="period-tabs">
+            <button class="period-tab active" data-period="day">Hôm nay</button>
+            <button class="period-tab" data-period="month">Tháng này</button>
+            <button class="period-tab" data-period="year">Năm này</button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Tổng sản phẩm</div>
+            <div class="stat-value" id="stat-products">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Lượt quét QR</div>
+            <div class="stat-value" id="stat-qr-today">—</div>
+            <div class="stat-sub" id="stat-qr-label">Dữ liệu mẫu</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Lượt chat AI</div>
+            <div class="stat-value" id="stat-chat-today">—</div>
+            <div class="stat-sub" id="stat-chat-label">Dữ liệu mẫu</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ngôn ngữ phổ biến</div>
+            <div class="stat-value" id="stat-top-lang">—</div>
+            <div class="stat-sub">Dữ liệu mẫu</div>
+          </div>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-card chart-bar-wrap">
+            <div class="chart-title">Lượt quét QR theo kỳ</div>
+            <canvas id="bar-chart" height="200"></canvas>
+          </div>
+          <div class="chart-card chart-pie-wrap">
+            <div class="chart-title">Tỷ lệ ngôn ngữ du khách</div>
+            <canvas id="pie-chart" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== QUẢN LÝ SẢN PHẨM ===== -->
+      <div class="page hidden" id="page-products">
+        <div class="products-layout">
+
+          <!-- Product list sidebar -->
+          <div class="product-sidebar">
+            <div class="product-sidebar-head">
+              <input type="search" id="search" placeholder="Tìm sản phẩm...">
+              <button class="btn primary" id="btn-new">＋ Thêm</button>
+            </div>
+            <ul class="product-list" id="product-list"></ul>
+            <p class="storage-note">💾 Lưu trên trình duyệt (chế độ demo).</p>
+          </div>
+
+          <!-- Editor -->
+          <div class="product-editor">
+            <div class="empty-state" id="empty-state">
+              <div class="empty-icon">🏺</div>
+              <h2>Chọn sản phẩm để chỉnh sửa</h2>
+              <p>hoặc bấm <b>＋ Thêm</b> để tạo mới</p>
+            </div>
+
+            <form id="editor-form" hidden autocomplete="off">
+              <div class="editor-head">
+                <h2 id="editor-title">Sản phẩm mới</h2>
+                <div class="editor-actions">
+                  <button type="button" class="btn ghost" id="btn-qr-download">⬇ Tải QR</button>
+                  <button type="button" class="btn ghost" id="btn-qr-print">🖨 In QR</button>
+                  <button type="button" class="btn danger" id="btn-delete">Xóa</button>
+                  <button type="submit" class="btn primary" id="btn-save">💾 Lưu</button>
+                </div>
+              </div>
+
+              <nav class="etabs">
+                <button type="button" class="etab active" data-tab="general">📋 Thông tin</button>
+                <button type="button" class="etab" data-tab="layers">📚 5 lớp văn hóa</button>
+              </nav>
+
+              <!-- Tab: Thông tin chung -->
+              <section class="panel active" data-panel="general">
+                <div class="form-grid">
+                  <div class="form-col">
+                    <label class="field">
+                      <span>Mã sản phẩm *</span>
+                      <input id="f-id" data-field="product.ProductID" maxlength="50" placeholder="VD: SP003" required>
+                      <small>Không đổi được sau khi lưu (dùng trong QR).</small>
+                    </label>
+                    <label class="field">
+                      <span>Tên sản phẩm *</span>
+                      <input data-field="product.ProductName" maxlength="255" placeholder="VD: Bình hoa gốm men rạn Hoa Sen" required>
+                    </label>
+                    <label class="field">
+                      <span>Danh mục</span>
+                      <input data-field="product.Category" list="category-list" maxlength="255" placeholder="VD: Gốm men rạn">
+                      <datalist id="category-list"></datalist>
+                    </label>
+                    <label class="switch">
+                      <input type="checkbox" data-field="product.IsActive">
+                      <span>Hiển thị cho du khách</span>
+                    </label>
+                  </div>
+                  <div class="form-col">
+                    <span class="field-label">Ảnh sản phẩm</span>
+                    <div class="thumb-box" id="thumb-box"></div>
+                    <div class="row">
+                      <label class="btn ghost file-btn">📷 Chọn ảnh<input type="file" id="thumb-input" accept="image/*" hidden></label>
+                      <button type="button" class="btn ghost" id="btn-thumb-remove">Bỏ</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Tab: 5 lớp văn hóa -->
+              <section class="panel" data-panel="layers">
+                <p class="panel-intro">AI <b>chỉ</b> trả lời dựa trên nội dung này. Viết tiếng Việt — AI tự dịch sang ngôn ngữ du khách.</p>
+                <div id="layer-fields"></div>
+              </section>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== LỊCH SỬ CHAT AI ===== -->
+      <div class="page hidden" id="page-chat-logs">
+        <h1 class="page-title">Lịch sử chat AI</h1>
+        <p class="page-desc">Câu hỏi du khách đã hỏi. Dùng để cải thiện nội dung văn hóa cho AI.</p>
+        <div class="logs-toolbar">
+          <input type="search" id="log-search" placeholder="Tìm câu hỏi...">
+          <select id="log-filter-lang">
+            <option value="">Tất cả ngôn ngữ</option>
+            <option value="vi-VN">Tiếng Việt</option>
+            <option value="en-US">English</option>
+            <option value="ja-JP">日本語</option>
+            <option value="ko-KR">한국어</option>
+            <option value="zh-CN">中文</option>
+            <option value="fr-FR">Français</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Thời gian</th>
+                <th>Sản phẩm</th>
+                <th>Câu hỏi của du khách</th>
+                <th>Ngôn ngữ</th>
+              </tr>
+            </thead>
+            <tbody id="log-tbody"></tbody>
+          </table>
+        </div>
+        <p class="muted small">* Dữ liệu mẫu để demo. Khi kết nối backend, sẽ đọc từ bảng ChatLogs.</p>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="js/lib.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/cms.js"></script>
+</body>
+</html>
