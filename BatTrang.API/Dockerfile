@@ -1,18 +1,24 @@
-# Stage 1: Build
+# Giai đoạn Build
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+
+# Copy file csproj và restore các thư viện (NuGet packages)
 COPY ["BatTrang.API.csproj", "./"]
-RUN dotnet restore "BatTrang.API.csproj"
+RUN dotnet restore "./BatTrang.API.csproj"
+
+# Copy toàn bộ mã nguồn còn lại và Build dự án
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet build "BatTrang.API.csproj" -c Release -o /app/build
 
-# Stage 2: Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# Giai đoạn Publish
+FROM build AS publish
+RUN dotnet publish "BatTrang.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Giai đoạn Chạy (Run) - Dùng image ASP.NET nhẹ hơn
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
-COPY --from=build /app/publish .
-
-# Lắng nghe trên mọi IP qua cổng 8080 hoặc cổng được cung cấp bởi môi trường
-ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 
+COPY --from=publish /app/publish .
+# Thay 'BatTrang.API.dll' bằng đúng tên file dll được tạo ra từ project của bạn
 ENTRYPOINT ["dotnet", "BatTrang.API.dll"]

@@ -6,6 +6,11 @@ const App = (() => {
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
 
+  // Khử dấu "/" bị dư ở cuối URL Cloudflare (nếu có) để tránh lỗi 404
+  function getApiBase() {
+    return CONFIG.API_BASE.replace(/\/$/, '');
+  }
+
   function showScreen(screenId) {
     $$('.screen').forEach(s => s.classList.remove('active'));
     const target = $(`#screen-${screenId}`);
@@ -28,7 +33,6 @@ const App = (() => {
     }
   }
 
-  // Tải sản phẩm (Đã sửa lại endpoint khớp chuẩn backend .NET)
   async function loadProduct(productId) {
     showLoading('Đang tải sản phẩm...');
     try {
@@ -41,8 +45,8 @@ const App = (() => {
         }
         await sleep(400);
       } else {
-        // Gọi đúng route lấy thông tin sản phẩm / profile từ Backend
-        const res = await fetch(`${CONFIG.API_BASE}/api/Chat/product/${productId}`);
+        // Đã sửa chèn thẳng biến getApiBase()
+        const res = await fetch(`${getApiBase()}/api/Chat/product/${productId}`);
         if (res.status === 404) {
           toast('Không tìm thấy sản phẩm: ' + productId);
           return;
@@ -52,7 +56,6 @@ const App = (() => {
       }
 
       currentProduct = data;
-      // Hỗ trợ cả camelCase từ .NET lẫn PascalCase nếu có
       renderProductCard(data.product || data.Product);
       renderInfoLayers(data.culturalProfile || data.CulturalProfile);
       
@@ -92,7 +95,7 @@ const App = (() => {
       const img = new Image();
       img.alt = name;
       img.onload = () => { wrap.innerHTML = ''; wrap.appendChild(img); };
-      img.src = thumb.startsWith('/') ? CONFIG.API_BASE + thumb : thumb;
+      img.src = thumb.startsWith('/') ? getApiBase() + thumb : thumb;
     }
   }
 
@@ -102,7 +105,6 @@ const App = (() => {
     container.innerHTML = '';
 
     LAYERS.forEach(layer => {
-      // Hỗ trợ truy vấn linh hoạt tên trường camelCase / PascalCase
       const val = profile[layer.dbField] || profile[layer.dbField.charAt(0).toLowerCase() + layer.dbField.slice(1)] || '—';
       const label = currentLang === 'vi' ? layer.label_vi : layer.label_en;
       const div = document.createElement('div');
@@ -140,6 +142,9 @@ const App = (() => {
 
     if (currentProduct) {
       renderInfoLayers(currentProduct.culturalProfile || currentProduct.CulturalProfile);
+    }
+    if (typeof Chat !== 'undefined' && Chat.updateLabels) {
+      Chat.updateLabels();
     }
   }
 

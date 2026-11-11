@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  backend-api:
+    build: 
+      context: ./BatTrang.API
+    container_name: battrang-api
+    ports:
+      - "5035:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Kết nối trực tiếp vào container SQL Server đang chạy sẵn (mvc_sql_server)
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=BatTrangHeritageDB;User Id=sa;Password=SangNguyxn@10112007;TrustServerCertificate=True;

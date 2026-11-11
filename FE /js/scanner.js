@@ -1,10 +1,11 @@
-// scanner.js - Quet ma QR bang camera (html5-qrcode)
+// js/scanner.js - Quet ma QR bang camera (html5-qrcode)
 
 const Scanner = (() => {
   let qr = null;
   let running = false;
   let wanted = false;
   let fileBound = false;
+  let lastInvalidToast = 0; // Đã thêm khởi tạo biến để không bị lỗi undefined
 
   // Bat camera
   async function start() {
@@ -61,8 +62,6 @@ const Scanner = (() => {
     stop();
     openProduct(productId);
   }
-
-  let lastInvalidToast = 0;
 
   function openProduct(productId) {
     beep();

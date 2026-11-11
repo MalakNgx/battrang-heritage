@@ -4,6 +4,10 @@ const Chat = (() => {
   let culturalProfile = null;
   const $ = (sel) => document.querySelector(sel);
 
+  function getApiBase() {
+    return CONFIG.API_BASE.replace(/\/$/, '');
+  }
+
   function init(pid, profile) {
     productId = pid;
     culturalProfile = profile;
@@ -17,7 +21,7 @@ const Chat = (() => {
 
     const input = $('#chat-input');
     input.placeholder = LANGUAGES[lang]?.placeholder || 'Hỏi về sản phẩm...';
-
+    updateLabels();
     bindEvents();
   }
 
@@ -57,10 +61,10 @@ const Chat = (() => {
 
       if (CONFIG.USE_MOCK) {
         await sleep(800 + Math.random() * 700);
-        aiResponse = generateMockResponse(text);
+        aiResponse = "Câu trả lời tạm thời từ hệ thống Mock.";
       } else {
         const lang = LANGUAGES[App.currentLang]?.apiCode || 'vi-VN';
-        const res = await fetch(`${CONFIG.API_BASE}/api/Chat/ask`, {
+        const res = await fetch(`${getApiBase()}/api/Chat/ask`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -71,14 +75,14 @@ const Chat = (() => {
         });
         if (!res.ok) {
           const errText = await res.text();
-          throw new Error(errText || `HTTP ${res.status}`);
+          throw new Error(`HTTP ${res.status}: ${errText}`);
         }
         const data = await res.json();
         aiResponse = data.answer || data.Answer || 'Xin lỗi, tôi chưa có thông tin.';
       }
 
       removeTyping(typingEl);
-      addMessage('ai', aiResponse, detectSource(text));
+      addMessage('ai', aiResponse, '🤖 AI Bát Tràng');
 
     } catch (err) {
       console.error('Chat error:', err);
@@ -87,22 +91,54 @@ const Chat = (() => {
     }
   }
 
-  function handleAction(layerKey) {
+  async function handleAction(layerKey) {
     const layer = LAYERS.find(l => l.key === layerKey);
     if (!layer || !culturalProfile) return;
 
-    const lang = App.currentLang;
-    const question = lang === 'vi' ? layer.label_vi : layer.label_en;
+    const langCode = App.currentLang; 
+    const question = langCode === 'vi' ? layer.label_vi : layer.label_en;
 
     addMessage('user', `${layer.icon} ${question}`);
-    const fieldKey = layer.dbField;
-    const answer = culturalProfile[fieldKey] || culturalProfile[fieldKey.charAt(0).toLowerCase() + fieldKey.slice(1)];
-
     const typingEl = showTyping();
-    setTimeout(() => {
+
+    try {
+      const langApiCode = LANGUAGES[langCode]?.apiCode || 'en-US';
+      const res = await fetch(`${getApiBase()}/api/Chat/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: productId,
+          question: question, 
+          language: langApiCode,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Lỗi kết nối API");
+      const data = await res.json();
+      const aiResponse = data.answer || data.Answer || 'No information available.';
+
       removeTyping(typingEl);
-      addMessage('ai', answer || 'Chưa có thông tin cho phần này.', `📚 ${question}`);
-    }, 300);
+      addMessage('ai', aiResponse, `📚 ${layer.label_en}`);
+
+    } catch (err) {
+      console.error('Layer action error:', err);
+      removeTyping(typingEl);
+      const fieldKey = layer.dbField;
+      const fallbackAnswer = culturalProfile[fieldKey] || 'No information available.';
+      addMessage('ai', fallbackAnswer, `📚 ${layer.label_en}`);
+    }
+  }
+
+  function updateLabels() {
+    const lang = App.currentLang || 'vi';
+    document.querySelectorAll('.action-chip').forEach(chip => {
+      const layerKey = chip.dataset.layer;
+      const layer = LAYERS.find(l => l.key === layerKey);
+      if (layer) {
+        const labelText = lang === 'en' ? layer.label_en : layer.label_vi;
+        chip.innerHTML = `${layer.icon} ${labelText}`;
+      }
+    });
   }
 
   function addMessage(role, text, source) {
@@ -141,10 +177,6 @@ const Chat = (() => {
     });
   }
 
-  function detectSource(text) {
-    return '🤖 AI Bát Tràng';
-  }
-
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -155,5 +187,5 @@ const Chat = (() => {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  return { init };
+  return { init, updateLabels };
 })();

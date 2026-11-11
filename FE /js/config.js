@@ -1,8 +1,6 @@
-// config.js - Cau hinh va du lieu mock
-
 // js/config.js - Cau hinh va du lieu mock
 const CONFIG = {
-  API_BASE: 'http://localhost:5035',
+  API_BASE: 'https://cotton-carry-mpeg-manufactured.trycloudflare.com',
   USE_MOCK: false,
   QR_PATTERN: /(?:\/api\/[Cc]hat(?:\/product)?\/|[?&]p=)([A-Za-z0-9]+)/,
 };
@@ -17,22 +15,22 @@ const LANGUAGES = {
 };
 
 const LAYERS = [
-  { key: 'identity',       icon: '🔍', label_vi: 'Nhận diện',           label_en: 'Identity',           dbField: 'IdentityLayer' },
-  { key: 'symbolism',      icon: '🌸', label_vi: 'Ý nghĩa hoa văn',    label_en: 'Symbolism',          dbField: 'SymbolismLayer' },
-  { key: 'craftsmanship',  icon: '🔨', label_vi: 'Kỹ thuật chế tác',   label_en: 'Craftsmanship',      dbField: 'CraftsmanshipLayer' },
-  { key: 'artisan',        icon: '👨‍🎨', label_vi: 'Câu chuyện nghệ nhân', label_en: 'Artisan Story',      dbField: 'ArtisanStory' },
-  { key: 'cultural',       icon: '🌏', label_vi: 'Kết nối văn hóa',    label_en: 'Cultural Connection', dbField: 'CulturalConnection' },
+  { key: 'identity', icon: '🏷️', label_vi: 'Nhận diện', label_en: 'Identity', dbField: 'IdentityLayer' },
+  { key: 'symbolism', icon: '🎨', label_vi: 'Ý nghĩa hoa văn', label_en: 'Symbolism', dbField: 'SymbolismLayer' },
+  { key: 'craftsmanship', icon: '⚱️', label_vi: 'Kỹ thuật chế tác', label_en: 'Craftsmanship', dbField: 'CraftsmanshipLayer' },
+  { key: 'artisan', icon: '👨‍🎨', label_vi: 'Câu chuyện nghệ nhân', label_en: 'Artisan Story', dbField: 'ArtisanStory' },
+  { key: 'cultural', icon: '🌐', label_vi: 'Kết nối văn hóa', label_en: 'Cultural Connection', dbField: 'CulturalConnection' }
 ];
 
-// Du lieu mau (khop DB schema)
+// Du lieu mau (khop DB schema) - Da cap nhat dung link Tunnel moi nhat
 const MOCK_DATA = {
   SP001: {
     product: {
       ProductID:    'SP001',
       ProductName:  'Bình hoa gốm men rạn Hoa Sen cổ',
       Category:     'Gốm men rạn',
-      ThumbnailUrl: 'http://localhost:5035/uploads/products/sp001.jpeg',
-      QrCodeUrl:    'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=http://localhost:5035/api/chat/SP001',
+      ThumbnailUrl: 'https://cotton-carry-mpeg-manufactured.trycloudflare.com/uploads/products/sp001.jpeg',
+      QrCodeUrl:    'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://review-mistakes-nelson-teachers.trycloudflare.com/api/chat/SP001',
       IsActive:     true,
     },
     culturalProfile: {

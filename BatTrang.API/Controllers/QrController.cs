@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using BatTrang.API.Services;
 
 namespace BatTrang.API.Controllers;
 
+[Authorize(Roles = "Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class QrController : ControllerBase
@@ -20,7 +22,6 @@ public class QrController : ControllerBase
     [HttpGet("base64/{productId}")]
     public IActionResult GetQrBase64(string productId)
     {
-        // URL thực tế khi du khách quét QR (ví dụ trỏ đến Frontend Next.js)
         string qrPayload = $"https://battrang.app/product/{productId}";
         
         string base64Image = _qrCodeService.GenerateBase64QrCode(qrPayload);

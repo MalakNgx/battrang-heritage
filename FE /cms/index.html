@@ -29,6 +29,9 @@
         <li class="nav-item" data-page="chat-logs">
           <span class="nav-icon">💬</span> Lịch sử chat AI
         </li>
+        <li class="nav-item" data-page="stats">
+          <span class="nav-icon">🔥</span> Thống kê quan tâm
+        </li>
       </ul>
     </nav>
 
@@ -190,7 +193,29 @@
             <tbody id="log-tbody"></tbody>
           </table>
         </div>
-        <p class="muted small">* Dữ liệu mẫu để demo. Khi kết nối backend, sẽ đọc từ bảng ChatLogs.</p>
+        <p class="muted small">Dữ liệu mẫu để demo. Khi kết nối backend, sẽ đọc từ bảng ChatLogs.</p>
+      </div>
+
+      <!-- ===== THỐNG KÊ SẢN PHẨM QUAN TÂM ===== -->
+      <div class="page hidden" id="page-stats">
+        <h1 class="page-title">Thống kê sản phẩm quan tâm</h1>
+        <p class="page-desc">Xếp hạng các sản phẩm được du khách mở chatbox và đặt câu hỏi nhiều nhất.</p>
+        
+        <div class="table-wrap">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Top</th>
+                <th>Mã sản phẩm</th>
+                <th>Tên sản phẩm</th>
+                <th>Tổng số lượt tương tác (Chat)</th>
+              </tr>
+            </thead>
+            <tbody id="stats-tbody">
+              <!-- Dữ liệu sẽ được load tự động từ Backend -->
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </main>

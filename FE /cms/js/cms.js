@@ -1,21 +1,5 @@
 // cms.js — CMS Gốm Bát Tràng
 
-// Dữ liệu mẫu cho lịch sử chat (backend chưa có endpoint đọc ChatLogs)
-const MOCK_LOGS = [
-  { time: '08/11 09:12', product: 'SP001', question: 'What is this vase made of?', lang: 'en-US' },
-  { time: '08/11 09:35', product: 'SP001', question: 'この花瓶はいくらですか？', lang: 'ja-JP' },
-  { time: '08/11 10:02', product: 'SP002', question: '이 도자기의 역사는 어떻게 됩니까?', lang: 'ko-KR' },
-  { time: '08/11 10:45', product: 'SP001', question: 'Bình này làm từ chất liệu gì vậy?', lang: 'vi-VN' },
-  { time: '08/11 11:23', product: 'SP002', question: 'Comment est fabriquée cette poterie?', lang: 'fr-FR' },
-  { time: '08/11 12:01', product: 'SP001', question: '这个花瓶是用什么材料做的？', lang: 'zh-CN' },
-  { time: '08/11 13:15', product: 'SP001', question: 'Who made this piece? How long does it take?', lang: 'en-US' },
-  { time: '08/11 14:30', product: 'SP002', question: 'Nghệ nhân nào tạo ra sản phẩm này?', lang: 'vi-VN' },
-  { time: '08/11 15:08', product: 'SP001', question: '何度で焼いていますか？', lang: 'ja-JP' },
-  { time: '08/11 16:22', product: 'SP002', question: 'Quelle est la signification du motif de lotus?', lang: 'fr-FR' },
-  { time: '08/11 17:45', product: 'SP001', question: 'Is this handmade or machine made?', lang: 'en-US' },
-  { time: '08/11 18:03', product: 'SP001', question: '이것은 얼마입니까?', lang: 'ko-KR' },
-];
-
 // Dữ liệu mẫu theo kỳ
 const PERIOD_DATA = {
   day: {
@@ -41,24 +25,71 @@ const LANG_DATA = {
   values: [38, 22, 15, 12, 8, 5],
   colors: ['#4e79a7', '#8b5e3c', '#f28e2b', '#e15759', '#76b7b2', '#59a14f'],
 };
+const API_BASE_URL = 'http://localhost:5035/api';
 
-// === NAVIGATION ===
+// 1. Kiểm tra Authentication ngay khi tải trang CMS
+(function checkAuth() {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+        window.location.href = 'login.html';
+    }
+})();
 
-function navigateTo(page) {
-  document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.page === page);
-  });
-  document.querySelectorAll('.page').forEach(el => {
-    el.classList.toggle('hidden', el.id !== `page-${page}`);
-  });
-
-  if (page === 'dashboard') loadDashboard();
-  if (page === 'products') loadProductList();
-  if (page === 'chat-logs') loadChatLogs();
+// Hàm Đăng xuất
+function logout() {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    window.location.href = 'login.html';
 }
 
+// 2. Hàm Wrapper gửi Request có đính kèm JWT Token
+async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('adminToken');
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers
+    };
+
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        headers
+    });
+
+    if (response.status === 401 || response.status === 403) {
+        alert('Phiên đăng nhập đã hết hạn hoặc bạn không có quyền!');
+        logout();
+        return null;
+    }
+
+    return response;
+}
+
+// === NAVIGATION (QUẢN LÝ CHUYỂN TRANG SIDEBAR DUY NHẤT) ===
 document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => navigateTo(item.dataset.page));
+  item.addEventListener('click', () => {
+    const pageId = item.dataset.page; // 'dashboard', 'products', 'chat-logs', 'stats'
+    
+    // 1. Đổi class active cho menu item
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+
+    // 2. Ẩn tất cả các trang đi
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+
+    // 3. Hiện đúng trang được chọn
+    const targetPage = document.getElementById(`page-${pageId}`);
+    if (targetPage) {
+      targetPage.classList.remove('hidden');
+    }
+
+    // 4. Kích hoạt hàm tải dữ liệu tương ứng theo từng trang
+    if (pageId === 'dashboard') loadDashboard();
+    if (pageId === 'products') loadProductList();
+    if (pageId === 'chat-logs') loadChatLogs();
+    if (pageId === 'stats') loadPopularProductsStats();
+  });
 });
 
 // === DASHBOARD ===
@@ -68,24 +99,89 @@ let pieChartInst = null;
 let currentPeriod = 'day';
 
 async function loadDashboard() {
-  const products = await CmsDB.getAll();
-  document.getElementById('stat-products').textContent = products.length;
-  updatePeriodStats(currentPeriod);
+  try {
+    // 1. Lấy tổng số sản phẩm thật
+    const resProducts = await fetchWithAuth('/product');
+    if (resProducts && resProducts.ok) {
+      const products = await resProducts.json();
+      document.getElementById('stat-products').textContent = products.length;
+    }
+
+    // 2. Lấy số liệu thống kê chat và tương tác thật từ Backend
+    const resStats = await fetchWithAuth('/chat/stats/dashboard?period=' + currentPeriod);
+    if (resStats && resStats.ok) {
+      const stats = await resStats.json();
+      
+      document.getElementById('stat-chat-today').textContent = stats.totalChats;
+      document.getElementById('stat-qr-today').textContent = stats.totalQrScans;
+      
+      // Xóa chữ "· mẫu" đi để thể hiện đây là dữ liệu thật
+      document.getElementById('stat-qr-label').textContent = 'Dữ liệu thời gian thực';
+      document.getElementById('stat-chat-label').textContent = 'Dữ liệu từ CSDL';
+    }
+
+  } catch (error) {
+    console.error("Lỗi tải dữ liệu Dashboard:", error);
+  }
+
   renderBarChart(currentPeriod);
   renderPieChart();
 }
 
-function updatePeriodStats(period) {
-  const d = PERIOD_DATA[period];
-  document.getElementById('stat-qr-today').textContent = d.qr;
-  document.getElementById('stat-chat-today').textContent = d.chat;
+async function updatePeriodStats(period) {
+  try {
+    const res = await fetchWithAuth(`/chat/stats/dashboard?period=${period}`);
+    if (res && res.ok) {
+      const data = await res.json();
+      
+      // 1. Hiển thị số lượt chat và lượt quét QR tính toán từ DB
+      document.getElementById('stat-chat-today').textContent = data.totalChats;
+      document.getElementById('stat-qr-today').textContent = data.totalQrScans;
+      
+      // 2. Hiển thị Ngôn ngữ phổ biến (chuyển đổi từ 'en-US' -> 'EN', 'vi-VN' -> 'VI'...)
+      let topLangCode = data.topLanguage || 'vi-VN';
+      let shortLang = topLangCode.split('-')[0].toUpperCase();
+      document.getElementById('stat-top-lang').textContent = shortLang;
 
-  const topLang = LANG_DATA.labels[0];
-  document.getElementById('stat-top-lang').textContent = 'EN';
+      const labelMap = { day: 'Hôm nay', month: 'Tháng này', year: 'Năm nay' };
+      document.getElementById('stat-qr-label').textContent = labelMap[period] + ' · CSDL';
+      document.getElementById('stat-chat-label').textContent = labelMap[period] + ' · CSDL';
 
-  const labelMap = { day: 'Hôm nay', month: 'Tháng này', year: 'Năm nay' };
-  document.getElementById('stat-qr-label').textContent = labelMap[period] + ' · mẫu';
-  document.getElementById('stat-chat-label').textContent = labelMap[period] + ' · mẫu';
+      // 3. Nếu có dữ liệu phân bố ngôn ngữ từ DB, cập nhật luôn cho biểu đồ tròn (Pie Chart)
+      if (data.languageDistribution && data.languageDistribution.length > 0) {
+        const labels = data.languageDistribution.map(item => item.language);
+        const values = data.languageDistribution.map(item => item.count);
+        renderDynamicPieChart(labels, values);
+      }
+    }
+  } catch (err) {
+    console.error("Lỗi cập nhật thống kê kỳ:", err);
+  }
+}
+
+// Hàm vẽ biểu đồ tròn động từ dữ liệu thật
+function renderDynamicPieChart(labels, values) {
+  const ctx = document.getElementById('pie-chart').getContext('2d');
+  if (pieChartInst) pieChartInst.destroy();
+
+  pieChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#4e79a7', '#8b5e3c', '#f28e2b', '#e15759', '#76b7b2', '#59a14f'],
+        borderWidth: 1,
+        borderColor: '#fff',
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } },
+      },
+    },
+  });
 }
 
 function renderBarChart(period) {
@@ -139,7 +235,6 @@ function renderPieChart() {
   });
 }
 
-// Period filter
 document.querySelectorAll('.period-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
@@ -151,100 +246,93 @@ document.querySelectorAll('.period-tab').forEach(tab => {
 });
 
 // === PRODUCTS ===
-
-let currentId = null; // ProductID đang chỉnh sửa
+let currentId = null;
 
 async function loadProductList() {
-  const products = await CmsDB.getAll();
-  const list = document.getElementById('product-list');
-  const query = document.getElementById('search').value.toLowerCase();
+    try {
+        const res = await fetchWithAuth('/product');
+        if (!res || !res.ok) return;
 
-  const filtered = products.filter(r =>
-    r.product.ProductName.toLowerCase().includes(query) ||
-    r.product.ProductID.toLowerCase().includes(query)
-  );
+        const products = await res.json();
+        const list = document.getElementById('product-list');
+        const query = document.getElementById('search').value.toLowerCase();
 
-  if (filtered.length === 0) {
-    list.innerHTML = '<li style="padding:16px;color:#999;text-align:center">Không có sản phẩm</li>';
-    return;
-  }
+        const filtered = products.filter(r =>
+            (r.productName && r.productName.toLowerCase().includes(query)) ||
+            (r.productID && r.productID.toLowerCase().includes(query))
+        );
 
-  list.innerHTML = filtered.map(r => `
-    <li class="product-item ${r.product.ProductID === currentId ? 'selected' : ''}"
-        data-id="${r.product.ProductID}">
-      <div class="product-item-name">${r.product.ProductName || '(Chưa đặt tên)'}</div>
-      <div class="product-item-id">${r.product.ProductID} · ${r.product.Category || 'Chưa phân loại'}</div>
-    </li>
-  `).join('');
+        if (filtered.length === 0) {
+            list.innerHTML = '<li style="padding:16px;color:#999;text-align:center">Không có sản phẩm trong cơ sở dữ liệu</li>';
+            return;
+        }
 
-  list.querySelectorAll('.product-item').forEach(el => {
-    el.addEventListener('click', () => openProduct(el.dataset.id));
-  });
+        list.innerHTML = filtered.map(r => `
+            <li class="product-item ${r.productID === currentId ? 'selected' : ''}"
+                data-id="${r.productID}">
+              <div class="product-item-name">${r.productName || '(Chưa đặt tên)'}</div>
+              <div class="product-item-id">${r.productID} · ${r.category || 'Chưa phân loại'}</div>
+            </li>
+        `).join('');
+
+        list.querySelectorAll('.product-item').forEach(el => {
+            el.addEventListener('click', () => openProduct(el.dataset.id));
+        });
+
+    } catch (error) {
+        console.error("Lỗi kết nối khi tải danh sách sản phẩm:", error);
+    }
 }
 
 async function openProduct(id) {
-  currentId = id;
-  const record = await CmsDB.get(id);
-  if (!record) return;
-  renderForm(record);
-  await loadProductList(); // cập nhật trạng thái selected
-}
+    currentId = id;
+    try {
+        const res = await fetchWithAuth('/product');
+        if (!res || !res.ok) return;
+        const products = await res.json();
+        const record = products.find(p => p.productID === id);
+        
+        if (!record) return;
 
-function renderForm(record) {
-  document.getElementById('empty-state').hidden = true;
-  const form = document.getElementById('editor-form');
-  form.hidden = false;
+        document.getElementById('empty-state').hidden = true;
+        const form = document.getElementById('editor-form');
+        form.hidden = false;
 
-  document.getElementById('editor-title').textContent = record.product.ProductName || 'Sản phẩm mới';
+        document.getElementById('editor-title').textContent = record.productName || 'Chi tiết sản phẩm';
 
-  // Điền thông tin chung
-  form.querySelectorAll('[data-field]').forEach(el => {
-    const path = el.dataset.field.split('.');
-    const val = record[path[0]]?.[path[1]];
-    if (el.type === 'checkbox') el.checked = !!val;
-    else el.value = val ?? '';
-  });
+        document.getElementById('f-id').value = record.productID || '';
+        document.getElementById('f-name').value = record.productName || '';
+        document.getElementById('f-category').value = record.category || '';
+        document.getElementById('f-id').disabled = true;
 
-  // Khoá ID nếu đã lưu
-  document.getElementById('f-id').disabled = !!record.product.ProductID;
+        if (record.culturalProfile) {
+            document.querySelectorAll('[data-layer]').forEach(el => {
+                const layerKey = el.dataset.layer;
+                let val = '';
+                if (layerKey === 'identity') val = record.culturalProfile.identityLayer;
+                if (layerKey === 'symbolism') val = record.culturalProfile.symbolismLayer;
+                if (layerKey === 'craftsmanship') val = record.culturalProfile.craftsmanshipLayer;
+                if (layerKey === 'artisan') val = record.culturalProfile.artisanStory;
+                if (layerKey === 'cultural') val = record.culturalProfile.culturalConnection;
+                
+                el.value = val || '';
+            });
+        }
 
-  // Thumbnail
-  const thumbBox = document.getElementById('thumb-box');
-  if (record.thumbnail) {
-    const url = URL.createObjectURL(record.thumbnail);
-    thumbBox.innerHTML = `<img src="${url}" alt="thumb">`;
-  } else if (record.product.ThumbnailUrl) {
-    thumbBox.innerHTML = `<img src="${record.product.ThumbnailUrl}" alt="thumb" onerror="this.parentElement.textContent='Không tải được ảnh'">`;
-  } else {
-    thumbBox.textContent = 'Chưa có ảnh';
-  }
-
-  // 5 lớp văn hóa
-  renderLayerFields(record);
-}
-
-function renderLayerFields(record) {
-  const container = document.getElementById('layer-fields');
-  container.innerHTML = LAYER_FIELDS.map(layer => `
-    <div class="layer-field">
-      <div class="layer-label">${layer.icon} ${layer.label}</div>
-      <div class="layer-hint">${layer.hint}</div>
-      <textarea data-layer="${layer.key}" rows="3">${record.culturalProfile[layer.key] || ''}</textarea>
-    </div>
-  `).join('');
+        await loadProductList();
+    } catch (e) {
+        console.error("Lỗi khi mở sản phẩm:", e);
+    }
 }
 
 function getFormData(record) {
   const form = document.getElementById('editor-form');
-
-  // Thông tin chung
   form.querySelectorAll('[data-field]').forEach(el => {
     const path = el.dataset.field.split('.');
     if (el.type === 'checkbox') record[path[0]][path[1]] = el.checked;
     else record[path[0]][path[1]] = el.value;
   });
 
-  // 5 lớp
   document.querySelectorAll('[data-layer]').forEach(el => {
     record.culturalProfile[el.dataset.layer] = el.value;
   });
@@ -254,72 +342,73 @@ function getFormData(record) {
 
 function openNewForm() {
   currentId = null;
-  const record = emptyRecord();
   document.getElementById('empty-state').hidden = true;
   document.getElementById('editor-form').hidden = false;
   document.getElementById('editor-title').textContent = 'Sản phẩm mới';
   document.getElementById('f-id').disabled = false;
 
-  // Reset form
   document.getElementById('editor-form').querySelectorAll('[data-field]').forEach(el => {
     if (el.type === 'checkbox') el.checked = true;
     else el.value = '';
   });
   document.getElementById('thumb-box').textContent = 'Chưa có ảnh';
-  renderLayerFields(record);
-
-  // Reset tabs
   switchTab('general');
 
-  // Bỏ selected trong list
   document.querySelectorAll('.product-item').forEach(el => el.classList.remove('selected'));
 }
 
-// Save
 document.getElementById('editor-form').addEventListener('submit', async e => {
   e.preventDefault();
   const id = document.getElementById('f-id').value.trim();
   if (!id) return showToast('Vui lòng nhập mã sản phẩm');
 
-  let record;
-  if (currentId) {
-    record = await CmsDB.get(currentId);
-  } else {
-    const existing = await CmsDB.get(id);
-    if (existing) return showToast(`Mã ${id} đã tồn tại`);
-    record = emptyRecord(id);
-  }
-
+  let record = { product: { ProductID: id }, culturalProfile: {} };
   record = getFormData(record);
-  if (thumbBlob) record.thumbnail = thumbBlob;
 
-  await CmsDB.put(record);
-  currentId = record.product.ProductID;
-  document.getElementById('editor-title').textContent = record.product.ProductName || currentId;
-  document.getElementById('f-id').disabled = true;
-  await loadProductList();
-  showToast('Đã lưu ✓');
+  const payload = {
+      ProductID: record.product.ProductID,
+      ProductName: record.product.ProductName,
+      Category: record.product.Category,
+      ThumbnailUrl: record.product.ThumbnailUrl || "",
+      QrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=http://localhost:5035/api/chat/${record.product.ProductID}`,
+      IsActive: record.product.IsActive !== false,
+      CulturalProfile: {
+          IdentityLayer: record.culturalProfile.IdentityLayer || "",
+          SymbolismLayer: record.culturalProfile.SymbolismLayer || "",
+          CraftsmanshipLayer: record.culturalProfile.CraftsmanshipLayer || "",
+          ArtisanStory: record.culturalProfile.ArtisanStory || "",
+          CulturalConnection: record.culturalProfile.CulturalConnection || ""
+      }
+  };
+
+  try {
+      const method = currentId ? 'PUT' : 'POST';
+      const endpoint = currentId ? `/product/${currentId}` : '/product';
+
+      const response = await fetchWithAuth(endpoint, {
+          method: method,
+          body: JSON.stringify(payload)
+      });
+
+      if (response && response.ok) {
+          currentId = payload.ProductID;
+          document.getElementById('editor-title').textContent = payload.ProductName || currentId;
+          document.getElementById('f-id').disabled = true;
+          showToast('Đã lưu dữ liệu vào Database thành công ✓');
+          loadProductList();
+      } else {
+          const errorMsg = await response.text();
+          showToast(`Lỗi Backend: ${errorMsg}`);
+      }
+  } catch (error) {
+      console.error("Lỗi khi lưu sản phẩm:", error);
+      showToast("Lỗi kết nối máy chủ C#");
+  }
 });
 
-// Delete
-document.getElementById('btn-delete').addEventListener('click', async () => {
-  if (!currentId) return;
-  if (!confirm(`Xóa sản phẩm ${currentId}?`)) return;
-  await CmsDB.remove(currentId);
-  currentId = null;
-  document.getElementById('editor-form').hidden = true;
-  document.getElementById('empty-state').hidden = false;
-  await loadProductList();
-  showToast('Đã xóa');
-});
-
-// New button
 document.getElementById('btn-new').addEventListener('click', openNewForm);
-
-// Search
 document.getElementById('search').addEventListener('input', loadProductList);
 
-// Tabs
 document.querySelectorAll('.etab').forEach(tab => {
   tab.addEventListener('click', () => switchTab(tab.dataset.tab));
 });
@@ -329,9 +418,7 @@ function switchTab(tabId) {
   document.querySelectorAll('.panel').forEach(el => el.classList.toggle('active', el.dataset.panel === tabId));
 }
 
-// Thumbnail upload
 let thumbBlob = null;
-
 document.getElementById('thumb-input').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -346,63 +433,79 @@ document.getElementById('btn-thumb-remove').addEventListener('click', () => {
   document.getElementById('thumb-input').value = '';
 });
 
-// Datalist danh mục
-const catList = document.getElementById('category-list');
-CATEGORIES.forEach(c => {
-  const opt = document.createElement('option');
-  opt.value = c;
-  catList.appendChild(opt);
-});
+// === THỐNG KÊ SẢN PHẨM QUAN TÂM (ĐÃ FIX LỖI 404 ẢNH) ===
+async function loadPopularProductsStats() {
+  const tbody = document.getElementById('stats-tbody');
+  if (!tbody) return;
 
-// QR download
-document.getElementById('btn-qr-download').addEventListener('click', () => {
-  if (!currentId) return showToast('Lưu sản phẩm trước');
-  const base = location.href.replace('/cms/index.html', '/index.html').replace('/cms/', '/');
-  const pwaUrl = base.includes('index.html') ? base : base + 'index.html';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(pwaUrl + '?p=' + currentId)}`;
-  window.open(qrUrl, '_blank');
-});
+  tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Đang tải dữ liệu thống kê...</td></tr>`;
 
-// QR print
-document.getElementById('btn-qr-print').addEventListener('click', () => {
-  if (!currentId) return showToast('Lưu sản phẩm trước');
-  const base = location.href.replace('/cms/index.html', '/index.html').replace('/cms/', '/');
-  const pwaUrl = base.includes('index.html') ? base : base + 'index.html';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pwaUrl + '?p=' + currentId)}`;
-  const win = window.open('', '_blank', 'width=420,height=520');
-  win.document.write(`
-    <html><head><title>QR — ${currentId}</title></head>
-    <body style="font-family:sans-serif;text-align:center;padding:30px">
-      <h3 style="margin-bottom:16px">QR — ${currentId}</h3>
-      <img src="${qrUrl}" width="300" height="300" onload="window.print()">
-      <p style="margin-top:16px;font-size:12px;color:#666">${currentId}</p>
-    </body></html>
-  `);
-  win.document.close();
-});
+  try {
+    const res = await fetchWithAuth('/chat/stats/popular-products');
+    
+    if (res && res.ok) {
+      const data = await res.json();
+      
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px; color:#666;">Chưa có dữ liệu tương tác từ du khách.</td></tr>`;
+        return;
+      }
 
-// === CHAT LOGS ===
+      tbody.innerHTML = data.map((item, index) => {
+        const hasThumb = item.thumbnail && item.thumbnail.trim() !== '' && !item.thumbnail.endsWith('default.jpg');
+        const imgSrc = item.thumbnail.startsWith('/') ? CONFIG.API_BASE + item.thumbnail : item.thumbnail;
 
-function loadChatLogs() {
-  renderLogs(MOCK_LOGS);
-
-  document.getElementById('log-search').addEventListener('input', filterLogs);
-  document.getElementById('log-filter-lang').addEventListener('change', filterLogs);
+        return `
+          <tr>
+            <td><strong>#${index + 1}</strong></td>
+            <td><code>${item.productId}</code></td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                ${hasThumb 
+                  ? `<img src="${imgSrc}" width="35" height="35" style="object-fit: cover; border-radius: 4px;" onerror="this.onerror=null; this.parentElement.innerHTML='🏺';">` 
+                  : `<span style="font-size: 20px; width: 35px; text-align: center; display: inline-block;">🏺</span>`
+                }
+                <span>${item.productName}</span>
+              </div>
+            </td>
+            <td><span style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 12px; font-weight: bold;">${item.count} lượt hỏi</span></td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red;">Không thể tải dữ liệu thống kê.</td></tr>`;
+    }
+  } catch (err) {
+    console.error('Lỗi tải thống kê:', err);
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red;">Lỗi kết nối tới Server.</td></tr>`;
+  }
 }
 
-function filterLogs() {
-  const query = document.getElementById('log-search').value.toLowerCase();
-  const lang = document.getElementById('log-filter-lang').value;
-  const filtered = MOCK_LOGS.filter(log => {
-    const matchQ = log.question.toLowerCase().includes(query) || log.product.toLowerCase().includes(query);
-    const matchL = !lang || log.lang === lang;
-    return matchQ && matchL;
-  });
-  renderLogs(filtered);
+// === CHAT LOGS ===
+async function loadChatLogs() {
+  try {
+    const res = await fetchWithAuth('/chat/logs'); 
+    if (res && res.ok) {
+      const logs = await res.json();
+      const formattedLogs = logs.map(item => ({
+        time: new Date(item.createdAt || item.CreatedAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }),
+        product: item.productID || item.ProductID,
+        question: item.question || item.Question,
+        lang: item.language || item.Language
+      }));
+      renderLogs(formattedLogs);
+    } else {
+      renderLogs([]);
+    }
+  } catch (error) {
+    console.error("Lỗi tải lịch sử chat:", error);
+    renderLogs([]);
+  }
 }
 
 function renderLogs(logs) {
   const tbody = document.getElementById('log-tbody');
+  if (!tbody) return;
   if (logs.length === 0) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:#999">Không có dữ liệu</td></tr>';
     return;
@@ -418,9 +521,9 @@ function renderLogs(logs) {
 }
 
 // === TOAST ===
-
 function showToast(msg, duration = 2500) {
   const el = document.getElementById('toast');
+  if (!el) return;
   el.textContent = msg;
   el.classList.remove('hidden');
   clearTimeout(showToast._t);
@@ -428,8 +531,7 @@ function showToast(msg, duration = 2500) {
 }
 
 // === INIT ===
-
 (async () => {
-  await CmsDB.seedIfEmpty(seedRecords());
+  await loadProductList();
   await loadDashboard();
 })();
